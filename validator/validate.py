@@ -52,6 +52,16 @@ ERROR_PRIORITY = [
     "guideline_mismatch",
     "invalid_category_id", "thing_overlap",
 ]
+# --- Ngưỡng đối chiếu detection <-> panoptic (chỉnh sau khi đo trên runs/clean) ---
+CC_MIN_BOX_PIXELS = 4                # box nhỏ hơn thế này (pixel mask nằm trong box) thì bỏ qua
+CC_COVERAGE_MIN = 0.85               # bbox_drift: < 85% pixel của segment nằm trong box cùng lớp -> ứng viên
+CC_SWAP_MIN_COVERAGE = 0.6           # class/category_swap: segment phải nằm phần lớn trong box
+CC_SWAP_MIN_FILL = 0.35              # ... và segment phải chiếm đáng kể diện tích box
+CC_MERGE_MIN_FILL = 0.4              # instance_merge: mỗi box cùng lớp phải được segment đó lấp >= 40%
+CC_MERGE_MAX_BOX_IOU = 0.5           # ... hai box khác nhau thật (loại duplicate_box)
+CC_MISSING_MIN_AREA_FRACTION = 0.01  # missing_box: segment thing >= 1% diện tích ảnh mà không box nào phủ
+CC_MISSING_COVER_MIN = 0.5           # một box 'phủ' segment nếu chứa >= 50% pixel của nó
+CC_TYPE_RANK = {"class_swap": 0, "instance_merge": 1, "bbox_drift": 2, "missing_box": 3}
 SCENE_LEAK = "scene_leak"        # target là scene_id, xử lý riêng
 
 # =====================================================================
@@ -67,6 +77,11 @@ JOB_KEYS = ("job_id", "job")
 GUIDELINE_KEYS = ("guideline_version", "guideline")
 JOBS_CSV_JOB_COLUMN = "job_id"
 JOBS_CSV_GUIDELINE_COLUMN = "guideline"
+
+
+def normalize_name(name):
+    """Chuẩn hoá tên lớp để ghép detection <-> panoptic qua TÊN."""
+    return str(name).strip().lower().replace("_", " ")
 
 
 def warn(message):
@@ -192,9 +207,9 @@ def _paeth(a, b, c):
     return b if pb <= pc else c
 
 
-def count_pixels_per_segment_id(mask_path):
+def decode_mask_id_rows(mask_path):
     """
-    Giải mã PNG 8-bit RGB/RGBA, không interlace, rồi đếm số pixel cho từng id segment.
+    Trả về (rộng, cao, rows) với rows[y][x] = id segment của pixel. Giải mã PNG 8-bit RGB/RGBA, không interlace, rồi đếm số pixel cho từng id segment.
     Các bước:
       1) Đọc các chunk, gộp IDAT, zlib giải nén.
       2) Mỗi hàng có 1 byte 'filter' đứng đầu -> khôi phục (unfilter) về byte thô.
@@ -219,7 +234,7 @@ def count_pixels_per_segment_id(mask_path):
     stride = width * bytes_per_pixel
     raw = zlib.decompress(bytes(idat))
 
-    counts = Counter()
+    rows = []
     previous_row = bytearray(stride)
     for row_index in range(height):
         start = row_index * (stride + 1)
@@ -249,9 +264,18 @@ def count_pixels_per_segment_id(mask_path):
         red = row[0::bytes_per_pixel]
         green = row[1::bytes_per_pixel]
         blue = row[2::bytes_per_pixel]
-        counts.update(zip(red, green, blue))
+        rows.append([r + g * 256 + b * 65536 for r, g, b in zip(red, green, blue)])
         previous_row = row
-    return Counter({r + g * 256 + b * 65536: n for (r, g, b), n in counts.items()})
+    return width, height, rows
+
+
+def count_pixels_per_segment_id(mask_path):
+    """Số pixel của từng id segment trong mask (Counter {id: số_pixel})."""
+    _, _, rows = decode_mask_id_rows(mask_path)
+    counts = Counter()
+    for row in rows:
+        counts.update(row)
+    return counts
 
 
 def read_jpeg_dimensions(path):
@@ -287,6 +311,8 @@ class Context:
         self.segments = defaultdict(list)      # stem -> [segment dict]
         self.image_size = {}                   # stem -> (rộng, cao) pixel
         self.label_cache = {}                  # stem -> danh sách dòng nhãn đã parse
+        self.class_name_by_id = {}             # id detection -> tên lớp (chuẩn hoá)
+        self.category_name_by_id = {}          # category_id panoptic -> tên lớp (chuẩn hoá)
 
 
 def load_context(root):
@@ -300,6 +326,8 @@ def load_context(root):
             parts = line.strip().split(None, 1)
             if parts and parts[0].lstrip("-").isdigit():
                 ctx.valid_class_ids.add(int(parts[0]))
+                if len(parts) > 1:
+                    ctx.class_name_by_id[int(parts[0])] = normalize_name(parts[1])
     if not ctx.valid_class_ids:
         warn("classes.txt trống/không đọc được -> dùng mặc định 0..79")
         ctx.valid_class_ids = set(range(80))
@@ -345,6 +373,7 @@ def load_context(root):
         thing_flags = {}
         for category in panoptic.get("categories", []):
             ctx.panoptic_category_ids.add(category["id"])
+            ctx.category_name_by_id[category["id"]] = normalize_name(category.get("name", ""))
             if "isthing" in category:
                 thing_flags[category["id"]] = bool(category["isthing"])
         if thing_flags:
@@ -584,9 +613,163 @@ def check_thing_overlap(ctx):
     return found
 
 
-def build_candidates(ctx):
-    """Chỗ dành cho phần đối chiếu detection<->panoptic (Người 2). Hiện trả rỗng."""
-    return []
+def yolo_to_pixel_box(row, width, height):
+    """Box YOLO chuẩn hoá -> (x0, y0, x1, y1) pixel, cắt vào trong ảnh. Rỗng thì trả None."""
+    x0 = max(0, int(round((row["cx"] - row["w"] / 2) * width)))
+    y0 = max(0, int(round((row["cy"] - row["h"] / 2) * height)))
+    x1 = min(width, int(round((row["cx"] + row["w"] / 2) * width)))
+    y1 = min(height, int(round((row["cy"] + row["h"] / 2) * height)))
+    return (x0, y0, x1, y1) if x1 > x0 and y1 > y0 else None
+
+
+def box_iou(a, b):
+    ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
+    iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
+    inter = ix * iy
+    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
+    return inter / union if union else 0.0
+
+
+def segment_bbox_px(rows, segment_id):
+    """Bbox pixel của một segment, tính từ chính mask (không tin bbox khai trong panoptic.json)."""
+    ys = [y for y, row in enumerate(rows) if segment_id in row]
+    if not ys:
+        return None
+    xs_min = min(rows[y].index(segment_id) for y in ys)
+    xs_max = max(len(rows[y]) - 1 - rows[y][::-1].index(segment_id) for y in ys)
+    return [xs_min, ys[0], xs_max + 1, ys[-1] + 1]
+
+
+def crosscheck_one_image(ctx, stem):
+    """
+    Đối chiếu box detection với segment panoptic của MỘT ảnh bằng PIXEL MASK (không chỉ IoU bbox).
+    Với mỗi box, đếm pixel của từng segment nằm trong box:
+        coverage = pixel segment trong box / tổng pixel segment   (segment có nằm gọn trong box không)
+        fill     = pixel segment trong box / diện tích box         (box có được segment lấp đầy không)
+    Từ đó sinh ứng viên (mỗi ảnh tối đa một lỗi nên cuối cùng chỉ giữ ứng viên mạnh nhất):
+      - class_swap/category_swap: box khớp segment nhưng KHÁC TÊN lớp (xem ảnh mới biết bên nào sai)
+      - instance_merge: một segment lấp >= 40% của HAI box cùng lớp, hai box không trùng nhau
+      - bbox_drift: cùng lớp nhưng < 85% pixel segment nằm trong box
+      - missing_box: segment thing đủ lớn mà không box nào phủ
+    """
+    mask_path = resolve_path(ctx, stem, "mask", "masks", ".png")
+    if not mask_path.is_file():
+        return []
+    try:
+        width, height, rows = decode_mask_id_rows(mask_path)
+    except Exception as exc:
+        warn("crosscheck bỏ qua %s: %s" % (stem, exc))
+        return []
+
+    # Segment thing, không crowd, có category hợp lệ
+    segments = {}
+    for seg in ctx.segments.get(stem, []):
+        if seg.get("id") in (0, None) or seg.get("iscrowd"):
+            continue
+        if ctx.thing_category_ids is not None and seg.get("category_id") not in ctx.thing_category_ids:
+            continue
+        segments[seg["id"]] = ctx.category_name_by_id.get(seg.get("category_id"), "")
+    if not segments:
+        return []
+    total_pixels = Counter()
+    for row in rows:
+        total_pixels.update(row)
+
+    # Các box detection hợp lệ, đổi sang pixel, và pixel segment nằm trong từng box
+    boxes = []
+    for row in get_label_rows(ctx, stem):
+        if row["class_id"] not in ctx.class_name_by_id:
+            continue
+        box = yolo_to_pixel_box(row, width, height)
+        if box is None:
+            continue
+        inside = Counter()
+        for y in range(box[1], box[3]):
+            inside.update(rows[y][box[0]:box[2]])
+        boxes.append({"box": box, "name": ctx.class_name_by_id[row["class_id"]],
+                      "area": (box[2] - box[0]) * (box[3] - box[1]), "inside": inside})
+
+    found = []
+    # --- instance_merge ---
+    merged_segments = set()
+    for seg_id, seg_name in segments.items():
+        same_class_boxes = [b for b in boxes
+                            if b["name"] == seg_name and b["inside"][seg_id] / b["area"] >= CC_MERGE_MIN_FILL]
+        for i in range(len(same_class_boxes)):
+            for j in range(i + 1, len(same_class_boxes)):
+                if box_iou(same_class_boxes[i]["box"], same_class_boxes[j]["box"]) < CC_MERGE_MAX_BOX_IOU:
+                    merged_segments.add(seg_id)
+                    fills = [same_class_boxes[i]["inside"][seg_id] / same_class_boxes[i]["area"],
+                             same_class_boxes[j]["inside"][seg_id] / same_class_boxes[j]["area"]]
+                    found.append(("instance_merge", min(fills), seg_id, seg_name, seg_name, same_class_boxes[i]["box"],
+                                  "một segment lấp >=%.0f%% của hai box cùng lớp" % (CC_MERGE_MIN_FILL * 100)))
+                    break
+            if seg_id in merged_segments:
+                break
+
+    # --- class_swap / category_swap / bbox_drift ---
+    for b in boxes:
+        best_id, best_pixels = None, 0
+        for seg_id in segments:
+            if b["inside"][seg_id] > best_pixels:
+                best_id, best_pixels = seg_id, b["inside"][seg_id]
+        if best_id is None or best_pixels < CC_MIN_BOX_PIXELS or best_id in merged_segments:
+            continue
+        coverage = best_pixels / total_pixels[best_id]
+        fill = best_pixels / b["area"]
+        if b["name"] != segments[best_id]:
+            if coverage >= CC_SWAP_MIN_COVERAGE and fill >= CC_SWAP_MIN_FILL:
+                found.append(("class_swap", min(coverage, fill), best_id, b["name"], segments[best_id], b["box"],
+                              "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"))
+        elif coverage < CC_COVERAGE_MIN:
+            found.append(("bbox_drift", 1 - coverage, best_id, b["name"], segments[best_id], b["box"],
+                          "chỉ %.0f%% pixel segment nằm trong box" % (coverage * 100)))
+
+    # --- missing_box ---
+    image_area = width * height
+    for seg_id, seg_name in segments.items():
+        if total_pixels[seg_id] < CC_MISSING_MIN_AREA_FRACTION * image_area or seg_id in merged_segments:
+            continue
+        if not any(b["inside"][seg_id] / total_pixels[seg_id] >= CC_MISSING_COVER_MIN for b in boxes):
+            found.append(("missing_box", total_pixels[seg_id] / image_area, seg_id, None, seg_name, None,
+                          "segment %.1f%% diện tích ảnh không có box nào phủ" % (100 * total_pixels[seg_id] / image_area)))
+
+    if not found:
+        return []
+    # Mỗi ảnh tối đa một lỗi -> giữ ứng viên mạnh nhất theo (loại ưu tiên, điểm)
+    found.sort(key=lambda c: (CC_TYPE_RANK[c[0]], -c[1]))
+    kind, score, seg_id, det_name, pan_name, box, reason = found[0]
+    return [{"image": stem, "type": kind, "det_class": det_name, "pan_class": pan_name,
+             "box_px": list(box) if box else None, "segment_id": seg_id,
+             "segment_bbox_px": segment_bbox_px(rows, seg_id), "score": round(score, 3),
+             "reason": reason + ("; còn %d dấu hiệu khác" % (len(found) - 1) if len(found) > 1 else "")}]
+
+
+def build_candidates(ctx, skip_images=()):
+    """
+    Ứng viên lỗi gán nhãn để NGƯỜI XEM ẢNH quyết định. Bỏ qua ảnh đã dính lỗi luật (mỗi ảnh một lỗi).
+    Sắp xếp theo điểm giảm dần để xem ca đáng ngờ nhất trước.
+    """
+    skip = set(skip_images)
+    candidates = []
+    for stem in sorted(ctx.manifest):
+        if stem in skip:
+            continue
+        try:
+            candidates.extend(crosscheck_one_image(ctx, stem))
+        except Exception as exc:
+            warn("crosscheck lỗi ở %s: %r" % (stem, exc))
+    return sorted(candidates, key=lambda c: (-c["score"], c["image"]))
+
+
+def write_review_template(path, candidates):
+    """Mẫu review_log.csv: để trống verdict/note, người xem ảnh điền (confirmed|rejected + thấy gì)."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["image", "type", "verdict", "note"])
+        for c in candidates:
+            writer.writerow([c["image"], c["type"], "", ""])
 
 
 # =====================================================================
@@ -629,6 +812,7 @@ def main():
     parser.add_argument("--out", required=True, help="errors.json")
     parser.add_argument("--rules-out", help="rules.json (lỗi luật, cùng schema)")
     parser.add_argument("--candidates", help="candidates.json (đối chiếu det<->panoptic)")
+    parser.add_argument("--review-template", help="review_log.csv mẫu (cần --candidates)")
     args = parser.parse_args()
 
     if not Path(args.delivery).is_dir():
@@ -652,7 +836,13 @@ def main():
     if args.rules_out:
         write_json(args.rules_out, {"errors": final_errors})
     if args.candidates:
-        write_json(args.candidates, {"candidates": build_candidates(ctx)})
+        already_flagged = {e["target"] for e in final_errors if e["type"] != SCENE_LEAK}
+        candidates = build_candidates(ctx, already_flagged)
+        write_json(args.candidates, {"candidates": candidates})
+        if args.review_template:
+            write_review_template(args.review_template, candidates)
+        by_kind = Counter(c["type"] for c in candidates)
+        print("[ung vien] %d: %s" % (len(candidates), dict(by_kind)), file=sys.stderr)
 
     summary = Counter(e["type"] for e in final_errors)
     print("tong %d loi: %s" % (len(final_errors), ", ".join("%s=%d" % kv for kv in sorted(summary.items())) or "khong co"))
