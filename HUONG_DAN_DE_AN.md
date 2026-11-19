@@ -24,21 +24,7 @@ py -X utf8 tools/trace_query.py delivery --out submission/de_an/trace.json
 py -X utf8 tools/review_queue.py split submission/de_an/candidates.json --out submission/de_an/review --people solo
 ```
 
-## 5. Push bản an toàn (lỗi luật + trace)
-
-```powershell
-git add submission/de_an
-```
-
-```powershell
-git commit -m "De an: loi luat + trace"
-```
-
-```powershell
-git push
-```
-
-## 6. Vẽ ảnh ứng viên
+## 5. Vẽ ảnh ứng viên
 
 ```powershell
 py -X utf8 tools/view.py delivery --review submission/de_an/review/review_solo.csv --out view_de_an
@@ -50,7 +36,7 @@ Phóng to một vùng khi vật nhỏ (đổi tên ảnh và toạ độ):
 py -X utf8 tools/view.py delivery img_0001 --crop 0 0 200 200 --out view_de_an --open
 ```
 
-## 7. Xem ảnh, điền `submission/de_an/review/review_solo.csv`
+## 6. Xem ảnh, điền `submission/de_an/review/review_solo.csv`
 
 - `verdict`: `confirmed` hoặc `rejected`. Không xem kịp thì để trống.
 - `note`: ≥ 20 ký tự, nói thấy gì, mỗi dòng khác nhau.
@@ -66,19 +52,19 @@ py -X utf8 tools/view.py delivery img_0001 --crop 0 0 200 200 --out view_de_an -
 
 Mỗi ảnh tối đa 1 lỗi confirmed. Phút 32 dừng xem.
 
-## 8. Gộp review
+## 7. Gộp review
 
 ```powershell
 py -X utf8 tools/review_queue.py merge submission/de_an/review --out submission/de_an/review_log.csv --force
 ```
 
-## 9. Chốt errors.json
+## 8. Chốt errors.json
 
 ```powershell
 py -X utf8 scripts/merge_review.py --rules submission/de_an/rules.json --review submission/de_an/review_log.csv --out submission/de_an/errors.json
 ```
 
-## 10. Nộp
+## 9. Nộp
 
 ```powershell
 git add submission/de_an
