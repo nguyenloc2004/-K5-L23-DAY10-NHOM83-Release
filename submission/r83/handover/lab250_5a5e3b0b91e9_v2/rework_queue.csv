@@ -1,0 +1,13 @@
+image,type,annotator,reviewer,action
+000000001000,missing_box,A03,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000002532,missing_image,A04,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000002592,missing_image,A04,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000006012,invalid_class,A05,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000006040,invalid_class,A05,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000006460,bbox_drift,A05,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000006763,class_swap,A05,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000008844,duplicate_box,A02,Q03,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000010092,class_swap,A02,Q03,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000022589,bbox_out_of_bounds,A01,Q03,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000023034,class_swap,A01,Q03,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại
+000000024021,bbox_out_of_bounds,A01,Q02,Gán lại nhãn detection; kiểm tra ảnh và nhãn trước khi nhận lại

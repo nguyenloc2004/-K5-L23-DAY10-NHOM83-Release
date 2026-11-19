@@ -1,0 +1,823 @@
+{
+  "candidates": [
+    {
+      "image": "000000023126",
+      "type": "bbox_drift",
+      "det_class": "horse",
+      "pan_class": "horse",
+      "box_px": [
+        457,
+        304,
+        508,
+        413
+      ],
+      "segment_id": 3158064,
+      "segment_bbox_px": [
+        0,
+        279,
+        489,
+        428
+      ],
+      "score": 0.955,
+      "reason": "chỉ 4% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000021903",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        616,
+        240,
+        640,
+        332
+      ],
+      "segment_id": 10659243,
+      "segment_bbox_px": [
+        334,
+        224,
+        640,
+        475
+      ],
+      "score": 0.928,
+      "reason": "chỉ 7% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000001584",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        121,
+        390,
+        128,
+        411
+      ],
+      "segment_id": 3880263,
+      "segment_bbox_px": [
+        114,
+        392,
+        126,
+        430
+      ],
+      "score": 0.799,
+      "reason": "chỉ 20% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000007816",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        573,
+        54,
+        598,
+        82
+      ],
+      "segment_id": 2962254,
+      "segment_bbox_px": [
+        564,
+        59,
+        587,
+        174
+      ],
+      "score": 0.788,
+      "reason": "chỉ 21% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000013729",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        153,
+        80,
+        229,
+        343
+      ],
+      "segment_id": 11712202,
+      "segment_bbox_px": [
+        78,
+        90,
+        260,
+        475
+      ],
+      "score": 0.717,
+      "reason": "chỉ 28% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000009590",
+      "type": "class_swap",
+      "det_class": "cup",
+      "pan_class": "bowl",
+      "box_px": [
+        423,
+        275,
+        472,
+        306
+      ],
+      "segment_id": 5066309,
+      "segment_bbox_px": [
+        424,
+        276,
+        470,
+        306
+      ],
+      "score": 0.716,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000009914",
+      "type": "class_swap",
+      "det_class": "hot dog",
+      "pan_class": "sandwich",
+      "box_px": [
+        519,
+        186,
+        640,
+        464
+      ],
+      "segment_id": 4220302,
+      "segment_bbox_px": [
+        529,
+        163,
+        637,
+        471
+      ],
+      "score": 0.706,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000001353",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        215,
+        154,
+        281,
+        284
+      ],
+      "segment_id": 3095374,
+      "segment_bbox_px": [
+        145,
+        199,
+        267,
+        382
+      ],
+      "score": 0.704,
+      "reason": "chỉ 30% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000020553",
+      "type": "class_swap",
+      "det_class": "bottle",
+      "pan_class": "vase",
+      "box_px": [
+        407,
+        132,
+        418,
+        186
+      ],
+      "segment_id": 1849190,
+      "segment_bbox_px": [
+        405,
+        133,
+        417,
+        186
+      ],
+      "score": 0.704,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000018380",
+      "type": "class_swap",
+      "det_class": "cup",
+      "pan_class": "wine glass",
+      "box_px": [
+        292,
+        184,
+        309,
+        207
+      ],
+      "segment_id": 6437897,
+      "segment_bbox_px": [
+        292,
+        185,
+        309,
+        206
+      ],
+      "score": 0.696,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000022892",
+      "type": "class_swap",
+      "det_class": "chair",
+      "pan_class": "cat",
+      "box_px": [
+        314,
+        0,
+        500,
+        260
+      ],
+      "segment_id": 7562331,
+      "segment_bbox_px": [
+        238,
+        23,
+        499,
+        254
+      ],
+      "score": 0.62,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000002685",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        281,
+        99,
+        455,
+        344
+      ],
+      "segment_id": 3424850,
+      "segment_bbox_px": [
+        316,
+        56,
+        638,
+        440
+      ],
+      "score": 0.6,
+      "reason": "chỉ 40% pixel segment nằm trong box; còn 1 dấu hiệu khác"
+    },
+    {
+      "image": "000000006763",
+      "type": "class_swap",
+      "det_class": "laptop",
+      "pan_class": "tv",
+      "box_px": [
+        220,
+        65,
+        371,
+        191
+      ],
+      "segment_id": 6446690,
+      "segment_bbox_px": [
+        220,
+        65,
+        371,
+        191
+      ],
+      "score": 0.592,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000007108",
+      "type": "instance_merge",
+      "det_class": "elephant",
+      "pan_class": "elephant",
+      "box_px": [
+        401,
+        77,
+        633,
+        426
+      ],
+      "segment_id": 3162214,
+      "segment_bbox_px": [
+        401,
+        77,
+        631,
+        426
+      ],
+      "score": 0.59,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000016010",
+      "type": "instance_merge",
+      "det_class": "zebra",
+      "pan_class": "zebra",
+      "box_px": [
+        359,
+        267,
+        447,
+        325
+      ],
+      "segment_id": 4739410,
+      "segment_bbox_px": [
+        359,
+        267,
+        447,
+        325
+      ],
+      "score": 0.58,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000017182",
+      "type": "instance_merge",
+      "det_class": "book",
+      "pan_class": "book",
+      "box_px": [
+        241,
+        231,
+        299,
+        306
+      ],
+      "segment_id": 3944728,
+      "segment_bbox_px": [
+        241,
+        231,
+        299,
+        306
+      ],
+      "score": 0.58,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000006954",
+      "type": "instance_merge",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        1,
+        108,
+        164,
+        454
+      ],
+      "segment_id": 5921417,
+      "segment_bbox_px": [
+        1,
+        108,
+        450,
+        453
+      ],
+      "score": 0.577,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000002153",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        372,
+        208,
+        434,
+        405
+      ],
+      "segment_id": 5784894,
+      "segment_bbox_px": [
+        284,
+        275,
+        466,
+        445
+      ],
+      "score": 0.554,
+      "reason": "chỉ 45% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000024243",
+      "type": "instance_merge",
+      "det_class": "cup",
+      "pan_class": "cup",
+      "box_px": [
+        0,
+        308,
+        29,
+        347
+      ],
+      "segment_id": 7966110,
+      "segment_bbox_px": [
+        0,
+        317,
+        23,
+        359
+      ],
+      "score": 0.549,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000007818",
+      "type": "class_swap",
+      "det_class": "wine glass",
+      "pan_class": "cup",
+      "box_px": [
+        400,
+        187,
+        443,
+        285
+      ],
+      "segment_id": 4999232,
+      "segment_bbox_px": [
+        400,
+        187,
+        443,
+        285
+      ],
+      "score": 0.546,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000018193",
+      "type": "class_swap",
+      "det_class": "chair",
+      "pan_class": "person",
+      "box_px": [
+        28,
+        123,
+        397,
+        470
+      ],
+      "segment_id": 7898505,
+      "segment_bbox_px": [
+        88,
+        45,
+        481,
+        472
+      ],
+      "score": 0.542,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000023034",
+      "type": "class_swap",
+      "det_class": "sheep",
+      "pan_class": "horse",
+      "box_px": [
+        253,
+        214,
+        302,
+        344
+      ],
+      "segment_id": 2896442,
+      "segment_bbox_px": [
+        254,
+        214,
+        302,
+        344
+      ],
+      "score": 0.529,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000016228",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        85,
+        203,
+        106,
+        257
+      ],
+      "segment_id": 8221060,
+      "segment_bbox_px": [
+        77,
+        197,
+        109,
+        263
+      ],
+      "score": 0.518,
+      "reason": "chỉ 48% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000008277",
+      "type": "bbox_drift",
+      "det_class": "broccoli",
+      "pan_class": "broccoli",
+      "box_px": [
+        278,
+        149,
+        380,
+        218
+      ],
+      "segment_id": 674121,
+      "segment_bbox_px": [
+        271,
+        183,
+        363,
+        257
+      ],
+      "score": 0.517,
+      "reason": "chỉ 48% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000002157",
+      "type": "bbox_drift",
+      "det_class": "wine glass",
+      "pan_class": "wine glass",
+      "box_px": [
+        51,
+        61,
+        111,
+        155
+      ],
+      "segment_id": 4998986,
+      "segment_bbox_px": [
+        47,
+        17,
+        114,
+        161
+      ],
+      "score": 0.511,
+      "reason": "chỉ 49% pixel segment nằm trong box; còn 1 dấu hiệu khác"
+    },
+    {
+      "image": "000000006771",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        533,
+        128,
+        640,
+        328
+      ],
+      "segment_id": 3947437,
+      "segment_bbox_px": [
+        534,
+        173,
+        640,
+        418
+      ],
+      "score": 0.496,
+      "reason": "chỉ 50% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000005001",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        208,
+        61,
+        298,
+        210
+      ],
+      "segment_id": 5984609,
+      "segment_bbox_px": [
+        215,
+        88,
+        335,
+        279
+      ],
+      "score": 0.49,
+      "reason": "chỉ 51% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000016451",
+      "type": "class_swap",
+      "det_class": "handbag",
+      "pan_class": "backpack",
+      "box_px": [
+        496,
+        454,
+        581,
+        550
+      ],
+      "segment_id": 3741764,
+      "segment_bbox_px": [
+        495,
+        452,
+        580,
+        513
+      ],
+      "score": 0.484,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000017627",
+      "type": "instance_merge",
+      "det_class": "car",
+      "pan_class": "car",
+      "box_px": [
+        479,
+        235,
+        569,
+        285
+      ],
+      "segment_id": 8553344,
+      "segment_bbox_px": [
+        481,
+        235,
+        569,
+        285
+      ],
+      "score": 0.463,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000015335",
+      "type": "instance_merge",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        366,
+        15,
+        640,
+        474
+      ],
+      "segment_id": 1774894,
+      "segment_bbox_px": [
+        366,
+        15,
+        640,
+        474
+      ],
+      "score": 0.446,
+      "reason": "một segment lấp >=40% của hai box cùng lớp; còn 1 dấu hiệu khác"
+    },
+    {
+      "image": "000000009400",
+      "type": "instance_merge",
+      "det_class": "cup",
+      "pan_class": "cup",
+      "box_px": [
+        251,
+        417,
+        315,
+        480
+      ],
+      "segment_id": 4015183,
+      "segment_bbox_px": [
+        251,
+        418,
+        315,
+        480
+      ],
+      "score": 0.445,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000019109",
+      "type": "instance_merge",
+      "det_class": "motorcycle",
+      "pan_class": "motorcycle",
+      "box_px": [
+        559,
+        250,
+        612,
+        325
+      ],
+      "segment_id": 5918787,
+      "segment_bbox_px": [
+        560,
+        250,
+        612,
+        325
+      ],
+      "score": 0.422,
+      "reason": "một segment lấp >=40% của hai box cùng lớp; còn 1 dấu hiệu khác"
+    },
+    {
+      "image": "000000017959",
+      "type": "bbox_drift",
+      "det_class": "kite",
+      "pan_class": "kite",
+      "box_px": [
+        164,
+        141,
+        331,
+        345
+      ],
+      "segment_id": 4145833,
+      "segment_bbox_px": [
+        191,
+        272,
+        324,
+        398
+      ],
+      "score": 0.415,
+      "reason": "chỉ 58% pixel segment nằm trong box; còn 2 dấu hiệu khác"
+    },
+    {
+      "image": "000000015517",
+      "type": "instance_merge",
+      "det_class": "bus",
+      "pan_class": "bus",
+      "box_px": [
+        375,
+        292,
+        489,
+        314
+      ],
+      "segment_id": 6443848,
+      "segment_bbox_px": [
+        375,
+        292,
+        489,
+        314
+      ],
+      "score": 0.412,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000010707",
+      "type": "instance_merge",
+      "det_class": "cup",
+      "pan_class": "cup",
+      "box_px": [
+        122,
+        357,
+        149,
+        416
+      ],
+      "segment_id": 4549770,
+      "segment_bbox_px": [
+        122,
+        358,
+        149,
+        415
+      ],
+      "score": 0.41,
+      "reason": "một segment lấp >=40% của hai box cùng lớp"
+    },
+    {
+      "image": "000000010092",
+      "type": "class_swap",
+      "det_class": "bench",
+      "pan_class": "dining table",
+      "box_px": [
+        538,
+        205,
+        640,
+        407
+      ],
+      "segment_id": 3294847,
+      "segment_bbox_px": [
+        546,
+        264,
+        640,
+        425
+      ],
+      "score": 0.392,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000023899",
+      "type": "class_swap",
+      "det_class": "couch",
+      "pan_class": "person",
+      "box_px": [
+        342,
+        123,
+        608,
+        328
+      ],
+      "segment_id": 3551018,
+      "segment_bbox_px": [
+        477,
+        108,
+        640,
+        348
+      ],
+      "score": 0.371,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+    },
+    {
+      "image": "000000006460",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        286,
+        123,
+        341,
+        193
+      ],
+      "segment_id": 1973790,
+      "segment_bbox_px": [
+        281,
+        138,
+        332,
+        207
+      ],
+      "score": 0.269,
+      "reason": "chỉ 73% pixel segment nằm trong box"
+    },
+    {
+      "image": "000000001000",
+      "type": "bbox_drift",
+      "det_class": "person",
+      "pan_class": "person",
+      "box_px": [
+        183,
+        121,
+        279,
+        394
+      ],
+      "segment_id": 6053739,
+      "segment_bbox_px": [
+        209,
+        176,
+        309,
+        424
+      ],
+      "score": 0.153,
+      "reason": "chỉ 85% pixel segment nằm trong box"
+    }
+  ]
+}
