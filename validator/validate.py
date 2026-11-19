@@ -53,14 +53,24 @@ ERROR_PRIORITY = [
     "invalid_category_id", "thing_overlap",
 ]
 # --- Ngưỡng đối chiếu detection <-> panoptic (chỉnh sau khi đo trên runs/clean) ---
-CC_MIN_BOX_PIXELS = 4                # box nhỏ hơn thế này (pixel mask nằm trong box) thì bỏ qua
-CC_COVERAGE_MIN = 0.85               # bbox_drift: < 85% pixel của segment nằm trong box cùng lớp -> ứng viên
-CC_SWAP_MIN_COVERAGE = 0.6           # class/category_swap: segment phải nằm phần lớn trong box
-CC_SWAP_MIN_FILL = 0.35              # ... và segment phải chiếm đáng kể diện tích box
-CC_MERGE_MIN_FILL = 0.4              # instance_merge: mỗi box cùng lớp phải được segment đó lấp >= 40%
+CC_MIN_BOX_PIXELS = 4                # pixel segment trong box ít hơn thế này thì không xét ghép
+CC_MIN_BBOX_IOU = 0.05               # cổng ghép: bbox box và bbox segment (tính từ mask) phải chạm nhau
+CC_MIN_MATCH_SCORE = 0.10            # điểm ghép tối thiểu (thấp để box lệch nặng vẫn còn ghép được)
+CC_MATCH_WEIGHT_PIXEL_IOU = 0.7      # điểm ghép = 0.7 * IoU pixel + 0.3 * IoU bbox
+CC_MATCH_WEIGHT_BBOX_IOU = 0.3
+CC_COVERAGE_MIN = 0.85               # bbox_drift: < 85% pixel của segment nằm trong box cùng lớp
+CC_USE_BBOX_IOU_DRIFT = False        # bật để bắt box phình/co (coverage vẫn cao). DỄ báo thừa ở vật bị che: chỉ bật nếu lô sạch cho thấy ổn
+CC_MAX_BBOX_IOU = 0.70               # ... khi IoU(box, bbox segment) < 0.70
+CC_SWAP_MIN_COVERAGE = 0.60          # class/category_swap: segment nằm phần lớn trong box
+CC_SWAP_MIN_FILL = 0.35              # ... và chiếm đáng kể diện tích box
+CC_MERGE_MIN_FILL = 0.4              # instance_merge: mỗi box cùng lớp được segment đó lấp >= 40%
 CC_MERGE_MAX_BOX_IOU = 0.5           # ... hai box khác nhau thật (loại duplicate_box)
-CC_MISSING_MIN_AREA_FRACTION = 0.01  # missing_box: segment thing >= 1% diện tích ảnh mà không box nào phủ
-CC_MISSING_COVER_MIN = 0.5           # một box 'phủ' segment nếu chứa >= 50% pixel của nó
+CC_MERGE_MAX_COVERAGE = 0.9          # ... mỗi box chỉ chứa MỘT PHẦN segment (box chứa gần hết = box của chính nó)
+CC_MERGE_MIN_COMBINED = 0.7          # ... và hai box cộng lại phủ >= 70% segment
+CC_MISSING_MIN_AREA_FRACTION = 0.01  # missing_box: segment >= 1% diện tích ảnh, chưa được ghép với box nào
+CC_MISSING_COVER_MIN = 0.5           # ... và không box nào chứa >= 50% pixel của nó
+# Thứ tự ưu tiên khi MỘT ảnh có nhiều dấu hiệu: loại cụ thể nhất trước, missing_box (triệu chứng
+# "còn sót") cuối cùng.
 CC_TYPE_RANK = {"class_swap": 0, "instance_merge": 1, "bbox_drift": 2, "missing_box": 3}
 SCENE_LEAK = "scene_leak"        # target là scene_id, xử lý riêng
 
@@ -630,27 +640,61 @@ def box_iou(a, b):
     return inter / union if union else 0.0
 
 
-def segment_bbox_px(rows, segment_id):
-    """Bbox pixel của một segment, tính từ chính mask (không tin bbox khai trong panoptic.json)."""
-    ys = [y for y, row in enumerate(rows) if segment_id in row]
-    if not ys:
-        return None
-    xs_min = min(rows[y].index(segment_id) for y in ys)
-    xs_max = max(len(rows[y]) - 1 - rows[y][::-1].index(segment_id) for y in ys)
-    return [xs_min, ys[0], xs_max + 1, ys[-1] + 1]
+def compute_segment_bboxes(rows, segment_ids):
+    """Bbox pixel (x0, y0, x1, y1) của từng segment, tính từ CHÍNH mask (không tin bbox khai trong JSON)."""
+    wanted = set(segment_ids)
+    bboxes = {}
+    for y, row in enumerate(rows):
+        present = wanted.intersection(row)
+        if not present:
+            continue
+        reversed_row = row[::-1]
+        for seg_id in present:
+            x_first = row.index(seg_id)
+            x_last = len(row) - reversed_row.index(seg_id)
+            old = bboxes.get(seg_id)
+            if old is None:
+                bboxes[seg_id] = [x_first, y, x_last, y + 1]
+            else:
+                old[0], old[2], old[3] = min(old[0], x_first), max(old[2], x_last), y + 1
+    return bboxes
+
+
+def pair_metrics(box, seg_bbox, inside_pixels, segment_total, box_area):
+    """
+    Bốn số đo độ khớp giữa một box detection và một segment panoptic:
+      pixel_iou = inside / (box_area + segment_total - inside)  phạt CẢ HAI phía (segment tràn ra ngoài
+                                                                 box lẫn box rộng hơn segment)
+      coverage  = inside / segment_total   segment có nằm gọn trong box không
+      fill      = inside / box_area        box có được segment lấp đầy không
+      bbox_iou  = IoU(box, bbox của segment tính từ mask)
+    """
+    union = box_area + segment_total - inside_pixels
+    return {"pixel_iou": inside_pixels / union if union else 0.0,
+            "coverage": inside_pixels / segment_total if segment_total else 0.0,
+            "fill": inside_pixels / box_area if box_area else 0.0,
+            "bbox_iou": box_iou(box, seg_bbox) if seg_bbox else 0.0}
 
 
 def crosscheck_one_image(ctx, stem):
     """
-    Đối chiếu box detection với segment panoptic của MỘT ảnh bằng PIXEL MASK (không chỉ IoU bbox).
-    Với mỗi box, đếm pixel của từng segment nằm trong box:
-        coverage = pixel segment trong box / tổng pixel segment   (segment có nằm gọn trong box không)
-        fill     = pixel segment trong box / diện tích box         (box có được segment lấp đầy không)
-    Từ đó sinh ứng viên (mỗi ảnh tối đa một lỗi nên cuối cùng chỉ giữ ứng viên mạnh nhất):
-      - class_swap/category_swap: box khớp segment nhưng KHÁC TÊN lớp (xem ảnh mới biết bên nào sai)
-      - instance_merge: một segment lấp >= 40% của HAI box cùng lớp, hai box không trùng nhau
-      - bbox_drift: cùng lớp nhưng < 85% pixel segment nằm trong box
-      - missing_box: segment thing đủ lớn mà không box nào phủ
+    Đối chiếu box detection với segment panoptic của MỘT ảnh. Quy trình:
+      B1. Lọc segment: không crowd, và TÊN lớp phải là lớp detection có box (loại stuff như wall/sky).
+      B2. instance_merge: một segment lấp >=40% của hai box cùng lớp khác nhau, MỖI box chỉ chứa một
+          phần segment (<90%) và hai box cộng lại phủ >=70% segment -> tách riêng; hai box và segment đó
+          không tham gia ghép cặp nữa. (Điều kiện "chỉ một phần" loại ca vật bị che: segment che lấp
+          nhiều box nhưng đã có box riêng chứa trọn nó.)
+      B3. GHÉP 1-1 box <-> segment: chấm điểm mọi cặp bằng IoU pixel (70%) + IoU bbox (30%), có cổng
+          bbox_iou >= 0.05, rồi ghép tham lam từ điểm cao xuống; mỗi box và mỗi segment chỉ ghép một lần.
+          (Không dùng 'segment nhiều pixel nhất trong box' vì vật bị che sẽ bị segment che nó cướp mất.)
+      B4. Đánh giá từng cặp đã ghép:
+            khác tên lớp + coverage>=0.6 + fill>=0.35 -> class_swap (hoặc category_swap, xem ảnh)
+            cùng lớp + coverage<0.85                  -> bbox_drift
+            cùng lớp + bbox_iou<0.70 (nếu bật)         -> bbox_drift (box phình/co)
+      B5. missing_box: segment đủ lớn, CHƯA được ghép với box nào và không box nào chứa >=50% pixel.
+      B6. Mỗi ảnh tối đa một lỗi: giữ ứng viên đứng đầu theo CC_TYPE_RANK, liệt kê phần còn lại ở
+          trường 'alternatives' để người xem ảnh biết còn dấu hiệu nào khác.
+    Segment crowd bị bỏ có chủ ý: COCO không có box detection cho vùng crowd nên đó là lệch TỰ NHIÊN.
     """
     mask_path = resolve_path(ctx, stem, "mask", "masks", ".png")
     if not mask_path.is_file():
@@ -661,88 +705,130 @@ def crosscheck_one_image(ctx, stem):
         warn("crosscheck bỏ qua %s: %s" % (stem, exc))
         return []
 
-    # Segment thing, không crowd, có category hợp lệ
+    # B1. segment hợp lệ để đối chiếu
+    detection_class_names = set(ctx.class_name_by_id.values())
     segments = {}
     for seg in ctx.segments.get(stem, []):
-        if seg.get("id") in (0, None) or seg.get("iscrowd"):
+        seg_id = seg.get("id")
+        if seg_id in (0, None) or seg.get("iscrowd"):
+            continue
+        name = ctx.category_name_by_id.get(seg.get("category_id"), "")
+        if name not in detection_class_names:
             continue
         if ctx.thing_category_ids is not None and seg.get("category_id") not in ctx.thing_category_ids:
             continue
-        segments[seg["id"]] = ctx.category_name_by_id.get(seg.get("category_id"), "")
+        segments[seg_id] = name
     if not segments:
         return []
     total_pixels = Counter()
     for row in rows:
         total_pixels.update(row)
+    seg_bbox = compute_segment_bboxes(rows, segments)
 
-    # Các box detection hợp lệ, đổi sang pixel, và pixel segment nằm trong từng box
+    # Box detection hợp lệ -> pixel, kèm số pixel của từng segment nằm trong box
     boxes = []
-    for row in get_label_rows(ctx, stem):
-        if row["class_id"] not in ctx.class_name_by_id:
+    for label_row in get_label_rows(ctx, stem):
+        if label_row["class_id"] not in ctx.class_name_by_id:
             continue
-        box = yolo_to_pixel_box(row, width, height)
-        if box is None:
+        pixel_box = yolo_to_pixel_box(label_row, width, height)
+        if pixel_box is None:
             continue
         inside = Counter()
-        for y in range(box[1], box[3]):
-            inside.update(rows[y][box[0]:box[2]])
-        boxes.append({"box": box, "name": ctx.class_name_by_id[row["class_id"]],
-                      "area": (box[2] - box[0]) * (box[3] - box[1]), "inside": inside})
+        for y in range(pixel_box[1], pixel_box[3]):
+            inside.update(rows[y][pixel_box[0]:pixel_box[2]])
+        boxes.append({"box": pixel_box, "name": ctx.class_name_by_id[label_row["class_id"]],
+                      "area": (pixel_box[2] - pixel_box[0]) * (pixel_box[3] - pixel_box[1]), "inside": inside})
 
     found = []
-    # --- instance_merge ---
-    merged_segments = set()
+
+    def add(kind, score, seg_id, det_name, pan_name, box, reason, metrics=None):
+        found.append({"type": kind, "score": score, "segment_id": seg_id, "det_class": det_name,
+                      "pan_class": pan_name, "box": box, "reason": reason, "metrics": metrics})
+
+    # B2. instance_merge
+    merged_segments, merged_boxes = set(), set()
     for seg_id, seg_name in segments.items():
-        same_class_boxes = [b for b in boxes
-                            if b["name"] == seg_name and b["inside"][seg_id] / b["area"] >= CC_MERGE_MIN_FILL]
-        for i in range(len(same_class_boxes)):
-            for j in range(i + 1, len(same_class_boxes)):
-                if box_iou(same_class_boxes[i]["box"], same_class_boxes[j]["box"]) < CC_MERGE_MAX_BOX_IOU:
+        same_class = [i for i, b in enumerate(boxes)
+                      if b["name"] == seg_name
+                      and b["inside"][seg_id] / b["area"] >= CC_MERGE_MIN_FILL
+                      and b["inside"][seg_id] / total_pixels[seg_id] < CC_MERGE_MAX_COVERAGE]
+        for x in range(len(same_class)):
+            for y in range(x + 1, len(same_class)):
+                i, j = same_class[x], same_class[y]
+                combined = (boxes[i]["inside"][seg_id] + boxes[j]["inside"][seg_id]) / total_pixels[seg_id]
+                if box_iou(boxes[i]["box"], boxes[j]["box"]) < CC_MERGE_MAX_BOX_IOU and combined >= CC_MERGE_MIN_COMBINED:
                     merged_segments.add(seg_id)
-                    fills = [same_class_boxes[i]["inside"][seg_id] / same_class_boxes[i]["area"],
-                             same_class_boxes[j]["inside"][seg_id] / same_class_boxes[j]["area"]]
-                    found.append(("instance_merge", min(fills), seg_id, seg_name, seg_name, same_class_boxes[i]["box"],
-                                  "một segment lấp >=%.0f%% của hai box cùng lớp" % (CC_MERGE_MIN_FILL * 100)))
+                    merged_boxes.update((i, j))
+                    fill = min(boxes[i]["inside"][seg_id] / boxes[i]["area"],
+                               boxes[j]["inside"][seg_id] / boxes[j]["area"])
+                    add("instance_merge", fill, seg_id, seg_name, seg_name, boxes[i]["box"],
+                        "một segment lấp >=%.0f%% của hai box cùng lớp" % (CC_MERGE_MIN_FILL * 100))
                     break
             if seg_id in merged_segments:
                 break
 
-    # --- class_swap / category_swap / bbox_drift ---
-    for b in boxes:
-        best_id, best_pixels = None, 0
-        for seg_id in segments:
-            if b["inside"][seg_id] > best_pixels:
-                best_id, best_pixels = seg_id, b["inside"][seg_id]
-        if best_id is None or best_pixels < CC_MIN_BOX_PIXELS or best_id in merged_segments:
+    # B3. ghép 1-1 box <-> segment
+    scored_pairs = []
+    for box_index, b in enumerate(boxes):
+        if box_index in merged_boxes:
             continue
-        coverage = best_pixels / total_pixels[best_id]
-        fill = best_pixels / b["area"]
-        if b["name"] != segments[best_id]:
-            if coverage >= CC_SWAP_MIN_COVERAGE and fill >= CC_SWAP_MIN_FILL:
-                found.append(("class_swap", min(coverage, fill), best_id, b["name"], segments[best_id], b["box"],
-                              "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"))
-        elif coverage < CC_COVERAGE_MIN:
-            found.append(("bbox_drift", 1 - coverage, best_id, b["name"], segments[best_id], b["box"],
-                          "chỉ %.0f%% pixel segment nằm trong box" % (coverage * 100)))
+        for seg_id in segments:
+            inside_pixels = b["inside"][seg_id]
+            if seg_id in merged_segments or inside_pixels < CC_MIN_BOX_PIXELS:
+                continue
+            metrics = pair_metrics(b["box"], seg_bbox.get(seg_id), inside_pixels, total_pixels[seg_id], b["area"])
+            if metrics["bbox_iou"] < CC_MIN_BBOX_IOU:
+                continue
+            score = CC_MATCH_WEIGHT_PIXEL_IOU * metrics["pixel_iou"] + CC_MATCH_WEIGHT_BBOX_IOU * metrics["bbox_iou"]
+            if score >= CC_MIN_MATCH_SCORE:
+                scored_pairs.append((score, box_index, seg_id, metrics))
+    scored_pairs.sort(key=lambda t: (-t[0], t[1], t[2]))
+    used_boxes, matched_segments, matches = set(), set(), []
+    for score, box_index, seg_id, metrics in scored_pairs:
+        if box_index in used_boxes or seg_id in matched_segments:
+            continue
+        used_boxes.add(box_index)
+        matched_segments.add(seg_id)
+        matches.append((box_index, seg_id, metrics))
 
-    # --- missing_box ---
+    # B4. đánh giá từng cặp
+    for box_index, seg_id, m in matches:
+        b = boxes[box_index]
+        if b["name"] != segments[seg_id]:
+            if m["coverage"] >= CC_SWAP_MIN_COVERAGE and m["fill"] >= CC_SWAP_MIN_FILL:
+                add("class_swap", min(m["coverage"], m["fill"]), seg_id, b["name"], segments[seg_id], b["box"],
+                    "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)", m)
+        elif m["coverage"] < CC_COVERAGE_MIN:
+            add("bbox_drift", 1 - m["coverage"], seg_id, b["name"], segments[seg_id], b["box"],
+                "chỉ %.0f%% pixel segment nằm trong box" % (m["coverage"] * 100), m)
+        elif CC_USE_BBOX_IOU_DRIFT and m["bbox_iou"] < CC_MAX_BBOX_IOU:
+            add("bbox_drift", 1 - m["bbox_iou"], seg_id, b["name"], segments[seg_id], b["box"],
+                "IoU(box, bbox segment) chỉ %.2f dù segment nằm trong box" % m["bbox_iou"], m)
+
+    # B5. missing_box
     image_area = width * height
     for seg_id, seg_name in segments.items():
-        if total_pixels[seg_id] < CC_MISSING_MIN_AREA_FRACTION * image_area or seg_id in merged_segments:
+        if seg_id in matched_segments or seg_id in merged_segments:
             continue
-        if not any(b["inside"][seg_id] / total_pixels[seg_id] >= CC_MISSING_COVER_MIN for b in boxes):
-            found.append(("missing_box", total_pixels[seg_id] / image_area, seg_id, None, seg_name, None,
-                          "segment %.1f%% diện tích ảnh không có box nào phủ" % (100 * total_pixels[seg_id] / image_area)))
+        if total_pixels[seg_id] < CC_MISSING_MIN_AREA_FRACTION * image_area:
+            continue
+        if any(b["inside"][seg_id] / total_pixels[seg_id] >= CC_MISSING_COVER_MIN for b in boxes):
+            continue
+        add("missing_box", total_pixels[seg_id] / image_area, seg_id, None, seg_name, None,
+            "segment %.1f%% diện tích ảnh chưa có box nào" % (100 * total_pixels[seg_id] / image_area))
 
+    # B6. một ảnh một ứng viên
     if not found:
         return []
-    # Mỗi ảnh tối đa một lỗi -> giữ ứng viên mạnh nhất theo (loại ưu tiên, điểm)
-    found.sort(key=lambda c: (CC_TYPE_RANK[c[0]], -c[1]))
-    kind, score, seg_id, det_name, pan_name, box, reason = found[0]
-    return [{"image": stem, "type": kind, "det_class": det_name, "pan_class": pan_name,
-             "box_px": list(box) if box else None, "segment_id": seg_id,
-             "segment_bbox_px": segment_bbox_px(rows, seg_id), "score": round(score, 3),
-             "reason": reason + ("; còn %d dấu hiệu khác" % (len(found) - 1) if len(found) > 1 else "")}]
+    found.sort(key=lambda c: (CC_TYPE_RANK[c["type"]], -c["score"]))
+    top, rest = found[0], found[1:]
+    return [{"image": stem, "type": top["type"], "det_class": top["det_class"], "pan_class": top["pan_class"],
+             "box_px": list(top["box"]) if top["box"] else None, "segment_id": top["segment_id"],
+             "segment_bbox_px": seg_bbox.get(top["segment_id"]), "score": round(top["score"], 3),
+             "reason": top["reason"],
+             "match": {k: round(v, 3) for k, v in top["metrics"].items()} if top["metrics"] else None,
+             "alternatives": [{"type": c["type"], "segment_id": c["segment_id"], "score": round(c["score"], 3)}
+                              for c in rest]}]
 
 
 def build_candidates(ctx, skip_images=()):
