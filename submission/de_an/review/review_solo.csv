@@ -1,0 +1,6 @@
+image,type,verdict,note,hint
+img_0015,missing_box,rejected,Hot dog segment already has a valid detection bounding box covering it.,pan_class=hot dog · score=0.063 · reason=segment 6.3% diện tích ảnh chưa có box nào
+img_0050,instance_merge,rejected,Two broccoli pieces in the bowl have separate panoptic segments without merging.,det_class=broccoli · pan_class=broccoli · score=0.514 · reason=một segment lấp >=40% của hai box cùng lớp
+img_0076,class_swap,confirmed,Distant vehicle on the right is mislabeled as car in detection instead of bus.,"det_class=car · pan_class=bus · score=0.691 · reason=box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+img_0130,category_swap,confirmed,Large elephant is correctly detected as elephant but misclassified as frisbee in panoptic.,"det_class=elephant · pan_class=frisbee · score=0.649 · reason=box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"
+img_0174,class_swap,confirmed,Pedestrian shoulder bag in the middle is mislabeled as suitcase in detection.,"det_class=suitcase · pan_class=handbag · score=0.414 · reason=box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)"

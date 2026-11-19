@@ -1,0 +1,129 @@
+{
+  "candidates": [
+    {
+      "image": "img_0076",
+      "type": "class_swap",
+      "det_class": "car",
+      "pan_class": "bus",
+      "box_px": [
+        0,
+        50,
+        342,
+        272
+      ],
+      "segment_id": 9064790,
+      "segment_bbox_px": [
+        0,
+        50,
+        342,
+        272
+      ],
+      "score": 0.691,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)",
+      "match": {
+        "pixel_iou": 0.691,
+        "coverage": 1.0,
+        "fill": 0.691,
+        "bbox_iou": 1.0
+      },
+      "alternatives": []
+    },
+    {
+      "image": "img_0130",
+      "type": "class_swap",
+      "det_class": "elephant",
+      "pan_class": "frisbee",
+      "box_px": [
+        124,
+        36,
+        426,
+        640
+      ],
+      "segment_id": 9865943,
+      "segment_bbox_px": [
+        125,
+        36,
+        426,
+        640
+      ],
+      "score": 0.649,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)",
+      "match": {
+        "pixel_iou": 0.649,
+        "coverage": 1.0,
+        "fill": 0.649,
+        "bbox_iou": 0.997
+      },
+      "alternatives": []
+    },
+    {
+      "image": "img_0050",
+      "type": "instance_merge",
+      "det_class": "broccoli",
+      "pan_class": "broccoli",
+      "box_px": [
+        457,
+        312,
+        546,
+        373
+      ],
+      "segment_id": 6262721,
+      "segment_bbox_px": [
+        239,
+        312,
+        545,
+        466
+      ],
+      "score": 0.514,
+      "reason": "một segment lấp >=40% của hai box cùng lớp",
+      "match": null,
+      "alternatives": []
+    },
+    {
+      "image": "img_0174",
+      "type": "class_swap",
+      "det_class": "suitcase",
+      "pan_class": "handbag",
+      "box_px": [
+        312,
+        175,
+        336,
+        210
+      ],
+      "segment_id": 7628221,
+      "segment_bbox_px": [
+        312,
+        175,
+        336,
+        210
+      ],
+      "score": 0.414,
+      "reason": "box khớp segment nhưng khác lớp (class_swap hoặc category_swap, xem ảnh)",
+      "match": {
+        "pixel_iou": 0.414,
+        "coverage": 1.0,
+        "fill": 0.414,
+        "bbox_iou": 1.0
+      },
+      "alternatives": []
+    },
+    {
+      "image": "img_0015",
+      "type": "missing_box",
+      "det_class": null,
+      "pan_class": "hot dog",
+      "box_px": null,
+      "segment_id": 15247058,
+      "segment_bbox_px": [
+        312,
+        49,
+        640,
+        179
+      ],
+      "score": 0.063,
+      "reason": "segment 6.3% diện tích ảnh chưa có box nào",
+      "match": null,
+      "alternatives": []
+    }
+  ]
+}

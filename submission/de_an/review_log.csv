@@ -1,0 +1,6 @@
+image,type,verdict,note
+img_0015,missing_box,rejected,Hot dog segment already has a valid detection bounding box covering it.
+img_0050,instance_merge,rejected,Two broccoli pieces in the bowl have separate panoptic segments without merging.
+img_0076,class_swap,confirmed,Distant vehicle on the right is mislabeled as car in detection instead of bus.
+img_0130,category_swap,confirmed,Large elephant is correctly detected as elephant but misclassified as frisbee in panoptic.
+img_0174,class_swap,confirmed,Pedestrian shoulder bag in the middle is mislabeled as suitcase in detection.
