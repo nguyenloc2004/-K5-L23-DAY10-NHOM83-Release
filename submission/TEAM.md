@@ -7,5 +7,5 @@
 |---|---|---|---|
 | Phạm Vũ Tùng Dương | 2A202603319 | zenlylove | Bàn giao v2, bảo mật, nộp bài |
 | Nguyễn Hữu Lộc | 2A202603313 | nguyenloc2004 | Điều phối, review, quyết định và truy vết |
-| Cần bổ sung | Cần bổ sung | baodu1204 | Validator luật |
-| Trần Thành Hùng | Cần bổ sung | Hung-1812 | Đối chiếu và công cụ xem ảnh |
+| Lê Duy Bảo | 2A202603257 | baodu1204 | Validator luật |
+| Trần Thành Hùng | 2A202603247 | Hung-1812 | Validator luật và Đối chiếu và công cụ xem ảnh |
